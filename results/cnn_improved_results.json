@@ -1,0 +1,9 @@
+{
+  "model": "cnn_improved",
+  "dataset": "cifar10",
+  "weights": 816938,
+  "accuracy": 0.7571,
+  "precision": 0.7692,
+  "recall": 0.7571,
+  "f1_score": 0.7522
+}
