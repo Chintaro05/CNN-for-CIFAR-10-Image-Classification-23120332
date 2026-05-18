@@ -118,55 +118,20 @@ def train(args: argparse.Namespace) -> None:
     classifier = cls()
     classifier.model = classifier.build_model()
 
-    callbacks = []
-    if args.early_stopping:
-        callbacks.append(tf.keras.callbacks.EarlyStopping(
-            monitor="val_loss",
-            patience=5,
-            restore_best_weights=True,
-            verbose=1,
-        ))
-    if args.reduce_lr:
-        callbacks.append(tf.keras.callbacks.ReduceLROnPlateau(
-            monitor="val_loss",
-            factor=0.5,
-            patience=3,
-            min_lr=1e-6,
-            verbose=1,
-        ))
-    if args.checkpoint:
-        os.makedirs(MODEL_DIR, exist_ok=True)
-        callbacks.append(tf.keras.callbacks.ModelCheckpoint(
-            os.path.join(MODEL_DIR, f"{model_type}_best.keras"),
-            save_best_only=True,
-            monitor="val_loss",
-            verbose=1,
-        ))
-
-    augment = bool(getattr(args, "augment", False)) and spec["dataset"] == "cifar10"
-    if getattr(args, "augment", False) and spec["dataset"] != "cifar10":
-        print("Warning: augmentation is only supported for CIFAR-10 and will be ignored.")
-
     print(f"Training {model_type} model on {spec['dataset']} …")
-    history = classifier.train(
-        x_train,
-        y_train,
-        epochs=args.epochs,
-        batch_size=args.batch_size,
-        callbacks=callbacks,
-        augment=augment,
-    )
+    history = classifier.train(x_train, y_train, epochs=args.epochs, batch_size=args.batch_size)
 
     os.makedirs(MODEL_DIR, exist_ok=True)
     save_path = _model_path(model_type)
     classifier.save(save_path)
     print(f"Model saved to {save_path}")
 
+    # Lưu history để vẽ learning curve
     os.makedirs(RESULTS_DIR, exist_ok=True)
-    history_path = os.path.join(RESULTS_DIR, f"{model_type}_history.json")
-    with open(history_path, "w", encoding="utf-8") as f:
+    hist_path = os.path.join(RESULTS_DIR, f"{model_type}_history.json")
+    with open(hist_path, "w", encoding="utf-8") as f:
         json.dump({k: [float(v) for v in vals] for k, vals in history.history.items()}, f)
-    print(f"Training history saved to {history_path}")
+    print(f"History saved to {hist_path}")
 
 
 # ── test ─────────────────────────────────────────────────────────────────────
@@ -296,22 +261,6 @@ def main() -> None:
     )
     train_parser.add_argument("--epochs", type=int, default=10, help="Number of training epochs")
     train_parser.add_argument("--batch-size", type=int, default=128, help="Training batch size")
-    train_parser.add_argument(
-        "--augment", action="store_true",
-        help="Use data augmentation for CIFAR-10 training",
-    )
-    train_parser.add_argument(
-        "--early-stopping", action="store_true",
-        help="Enable early stopping on validation loss",
-    )
-    train_parser.add_argument(
-        "--reduce-lr", action="store_true",
-        help="Enable ReduceLROnPlateau learning-rate reduction",
-    )
-    train_parser.add_argument(
-        "--checkpoint", action="store_true",
-        help="Save the best model checkpoint based on validation loss",
-    )
 
     # test
     test_parser = subparsers.add_parser("test", help="Evaluate a trained model")
